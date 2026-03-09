@@ -222,15 +222,103 @@ http://192.168.56.11:5000
 
 ```
 Browser
-   │
-   ▼
+   ↓
 Flask App (192.168.56.11)
-   │
-   ▼
-PostgreSQL DB (192.168.56.12)
+   ↓
+PostgreSQL (192.168.56.12)
 ```
 
 ---
+
+## Upgrade #1 Reverse Proxy with Nginx
+
+Browser no longer accesses Flask directly at port 5000, but via port 80 like a normal web server.
+
+Install Nginx: 
+```
+sudo apt update
+sudo apt install nginx -y
+```
+
+Reverse Proxy Configuration: 
+```
+sudo nano /etc/nginx/sites-available/flask-app
+```
+```
+server {
+    listen 80;
+
+    server_name 192.168.56.11;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+Activate Configuration: 
+```
+sudo ln -s /etc/nginx/sites-available/flask-app /etc/nginx/sites-enabled/
+```
+
+Restart Nginx System: 
+```
+sudo systemctl restart nginx
+```
+
+Now App Server run on:
+```
+http://192.168.56.11
+```
+Server Architecture (#1):
+```
+Laptop (browser)
+        ↓
+   Nginx :80
+        ↓
+ Flask App :5000
+        ↓
+ PostgreSQL
+```
+
+## Upgrade #2 Run Flask App as a Service with Systemd
+
+Create new service file for flask app: 
+```
+sudo nano /etc/systemd/system/flask-app.service
+```
+flask-app.service Configuration: 
+```
+[Unit]
+Description=Flask App Server
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/app
+ExecStart=/usr/bin/python3 /home/ubuntu/app/app.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+Reload Systemd: 
+```
+sudo systemctl daemon-reload
+```
+
+Start the service & Check the status: 
+```
+sudo systemctl start flask-app
+sudo systemctl status flask-app
+```
+
+Activate Auto-Start:
+```
+sudo systemctl enable flask-app
+```
 
 ## Skills Practiced
 
